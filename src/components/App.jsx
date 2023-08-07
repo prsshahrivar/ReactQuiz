@@ -1,15 +1,21 @@
 /*eslint-disable*/
 
+import {useEffect, useReducer} from "react";
 import Header from "./Header";
 import Main from "./Main";
-import {useEffect, useReducer} from "react";
+import Loader from "./Loader";
+import Error from "./Error";
+import StartScreen from "./StartScreen";
+import Question from "./Question";
 
 
 const initialState = {
     questions: [],
-
     // loading , error, active, ready, finished
-    status: "loading"
+    status: "loading",
+    index: 0,
+    answer: null,
+    points: 0
 }
 
 function reducer(state, action) {
@@ -20,16 +26,35 @@ function reducer(state, action) {
             return {
                 ...state,
                 questions: action.payload,
-                status : 'ready'
+                status: 'ready'
             }
 
         case "dataFailed" :
             return {
                 ...state,
-                status : 'error'
+                status: 'error'
             }
 
+        case "start" :
+            return {
+                ...state,
+                status: 'active'
+            }
 
+        case "newAnswer" :
+            const question = state.questions[state.index]
+            return {
+                ...state,
+                answer: action.payload,
+                points: action.payload === question.correctOption ? state.points + question.points : state.points
+            }
+
+        case "nextQuestion" :
+            return {
+                ...state,
+                index: state.index + 1,
+                answer: null
+            }
         default:
             throw new Error('Action Unknown')
 
@@ -39,7 +64,9 @@ function reducer(state, action) {
 
 export default function App() {
 
-    const [state, dispatch] = useReducer(reducer, initialState)
+    const [{questions, status, index, answer, points}, dispatch] = useReducer(reducer, initialState)
+
+    const numQuestions = questions.length
 
     useEffect(function () {
 
@@ -51,7 +78,7 @@ export default function App() {
                 dispatch({type: "dataReceived", payload: data})
 
             } catch (err) {
-                dispatch({type:"dataFailed"})
+                dispatch({type: "dataFailed"})
             }
 
         }
@@ -64,8 +91,12 @@ export default function App() {
         <Header/>
 
         <Main>
-            <p> 1 / 15 </p>
-            <p>question ?</p>
+
+            {status === 'loading' && <Loader/>}
+            {status === 'error' && <Error/>}
+            {status === 'ready' && <StartScreen numQuestions={numQuestions} dispatch={dispatch}/>}
+            {status === 'active' && <Question question={questions[index]} dispatch={dispatch} answer={answer}/>}
+
         </Main>
 
     </div>
